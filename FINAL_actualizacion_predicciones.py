@@ -5,6 +5,7 @@ import pandas as pd
 import joblib
 from itertools import product
 import matplotlib.pyplot as plt
+import numpy as np
 
 # Configuracion basica
 mongo_user = os.environ.get("MONGO_USER")
@@ -68,7 +69,7 @@ for comunidad in df_2025['CCAA_DESTINO'].unique():
     # Hacer predicción
     y_pred = modelo.predict(X_pred)
     # Postprocesamiento: garantizar valores no negativos
-    y_pred = np.maximum(y_pred, 0)
+    y_pred = np.abs(y_pred)  # Corrige negativos
 
     # Guardar resultados
     df_comunidad['VISITANTES_PREDICHOS'] = y_pred
