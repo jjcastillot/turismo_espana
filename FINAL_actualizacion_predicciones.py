@@ -6,13 +6,70 @@ import joblib
 from itertools import product
 import matplotlib.pyplot as plt
 import numpy as np
+import requests
+from io import BytesIO
 
 # Configuracion basica
 mongo_user = os.environ.get("MONGO_USER")
 mongo_password = os.environ.get("MONGO_PASSWORD")
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s]: %(message)s', handlers=[logging.StreamHandler()])
 
-# Conexion a MongoDB
+# Etapa 1: Solicitud API y actualizacion de DB en MongoDB
+# URL base del endpoint
+url = "https://dataestur.azure-api.net/API-SEGITTUR-v1/FRONTUR_DL"
+
+# Parámetros de la consulta
+params = {
+    "desde (año)": 2020,
+    "hasta (año)": 2024,
+    "País de residencia": "Todos",
+    "Tipo de visitante": "Todos",
+    "CCAA de destino": "Todos"
+}
+
+# Encabezados (para asegurar que aceptamos el formato Excel)
+headers = {
+    "accept": "application/vnd.ms-excel"
+}
+
+# Realizar la solicitud GET
+response = requests.get(url, params=params, headers=headers)
+
+if response.status_code == 200 and response.headers['Content-Type'] == 'application/vnd.ms-excel':
+    # Leer el archivo Excel desde la respuesta
+    excel_file = BytesIO(response.content)
+    
+    # Leer las hojas disponibles en el archivo
+    xls = pd.ExcelFile(excel_file)
+    print("Hojas disponibles:", xls.sheet_names)
+
+    # Leer la primera hoja
+    df = pd.read_excel(xls, sheet_name=0)
+    #logging.info(df.head())
+    #Limpieza de espacios en las columnas
+    df = df.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+
+    
+    # Conexión a MongoDB 
+    client = MongoClient(f"mongodb://{mongo_user}:{mongo_password}@localhost:27017/")
+    db = client["tfm"]
+    collection = db["frontur_dl"]
+
+    # Eliminar la colección si existe (sobrescribir)
+    collection.drop()
+
+    # Insertar los datos
+    collection.insert_many(df.to_dict("records"))
+    logging.info(f"Datos insertados correctamente en MongoDB. Total documentos: {df.shape[0]}")
+
+    # Cerrar conexion
+    client.close()
+    logging.info("Conexion a MongoDB cerrada correctamente.")
+
+else:
+    logging.error(f"Error: No se recibió un archivo Excel válido (status code {response.status_code})")
+
+# Conectarse a MongoDB nuevamente
 client = MongoClient(f"mongodb://{mongo_user}:{mongo_password}@localhost:27017/")
 db = client["tfm"]
 collection = db["frontur_dl"]
