@@ -20,7 +20,7 @@ url = "https://dataestur.azure-api.net/API-SEGITTUR-v1/FRONTUR_DL"
 
 # Parámetros de la consulta
 params = {
-    "desde (año)": 2020,
+    "desde (año)": 2016,
     "hasta (año)": 2024,
     "País de residencia": "Todos",
     "Tipo de visitante": "Todos",
